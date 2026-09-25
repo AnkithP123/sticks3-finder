@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>StickS3 Apple FindMy & Proximity Finder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 0.3; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-pulse-ring {
+      animation: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes soundwave {
+      0%, 100% { height: 6px; }
+      50% { height: 28px; }
+    }
+    .sound-bar {
+      animation: soundwave 1s ease-in-out infinite;
+    }
+    .sound-bar:nth-child(1) { animation-delay: 0.0s; }
+    .sound-bar:nth-child(2) { animation-delay: 0.2s; }
+    .sound-bar:nth-child(3) { animation-delay: 0.4s; }
+    .sound-bar:nth-child(4) { animation-delay: 0.1s; }
+    .sound-bar:nth-child(5) { animation-delay: 0.3s; }
+    /* Custom Leaflet Map styling */
+    .leaflet-popup-content-wrapper {
+      background: #0f172a !important;
+      color: #f8fafc !important;
+      border: 1px solid #334155 !important;
+      border-radius: 12px !important;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+    }
+    .leaflet-popup-tip {
+      background: #0f172a !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30 px-4 py-3 sm:px-6">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-lg text-white tracking-tight">StickS3 Finder</h1>
+            <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Apple Find My</span>
+          </div>
+          <p class="text-xs text-slate-400">Crowdsourced Apple Network & Web Bluetooth Proximity Alarm</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openKeysModal()" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          </svg>
+          Keys & Config
+        </button>
+        <div id="bt-status-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-800 border border-slate-700 text-slate-300">
+          <span id="bt-status-dot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+          <span id="bt-status-text">Bluetooth Disconnected</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- iOS / Mobile Browser Compatibility Alert Banner -->
+  <div id="browser-banner" class="bg-indigo-950/80 border-b border-indigo-500/30 px-4 py-2.5 sm:px-6">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+      <div class="flex items-center gap-2.5 text-indigo-200">
+        <span class="flex-shrink-0 text-base">💡</span>
+        <span>
+          <strong class="text-white">Connecting via Phone?</strong> iOS Safari disables Web Bluetooth by default. To ring your StickS3 directly from your iPhone, open this link inside the free 
+          <a href="https://apps.apple.com/app/bluefy-web-ble-browser/id1492822055" target="_blank" class="underline text-indigo-300 hover:text-white font-semibold">Bluefy Web BLE Browser</a>. Chrome on Mac/PC/Android works out of the box!
+        </span>
+      </div>
+      <button onclick="document.getElementById('browser-banner').style.display='none'" class="text-indigo-400 hover:text-indigo-200 text-xs font-medium self-end sm:self-center">Dismiss</button>
+    </div>
+  </div>
+
+  <!-- Main Grid Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left 2 Cols: Interactive Map & Location Overview -->
+    <div class="lg:col-span-2 flex flex-col gap-4">
+      <div class="relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex-1 flex flex-col min-h-[520px]">
+        
+        <!-- Map Header Controls -->
+        <div class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-2 z-20">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-300">Live Crowdsourced Fixes</span>
+            <span id="report-counter" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-mono">55 reports</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <button onclick="fitMapBounds()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Fit All</button>
+            <button onclick="centerOnCentroid()" class="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition border border-emerald-500/30 font-medium">Center Centroid</button>
+            <button onclick="openImportModal()" class="px-2.5 py-1 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition border border-blue-500/30 font-medium">+ Add Reports</button>
+          </div>
+        </div>
+
+        <!-- Leaflet Map Container -->
+        <div id="map" class="w-full flex-1 min-h-[460px] z-10"></div>
+
+        <!-- Centroid Info Floating Card -->
+        <div class="absolute bottom-4 left-4 right-4 sm:right-auto z-20 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 p-4 rounded-xl shadow-2xl max-w-sm">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-[11px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                Multilateration Centroid
+              </div>
+              <div class="text-sm font-bold text-white mt-1">Hillenbrand Hall</div>
+              <div id="centroid-coords" class="text-xs font-mono text-slate-400 mt-0.5">40.4261900, -86.9265193</div>
+            </div>
+            <div class="text-right">
+              <span id="centroid-accuracy" class="px-2 py-1 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-xs font-mono font-bold">&plusmn;7.9 m</span>
+            </div>
+          </div>
+          <div class="mt-3 pt-3 border-t border-slate-800 flex justify-between items-center text-xs">
+            <span class="text-slate-400">Latest fix: <span id="latest-time" class="text-slate-200">Just now</span></span>
+            <a id="gmaps-link" href="https://www.google.com/maps?q=40.4261900,-86.9265193" target="_blank" class="text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1">
+              Google Maps &nearr;
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Quick Action Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+          <div class="text-[11px] text-slate-400">Total Fixes</div>
+          <div id="stat-total" class="text-lg font-bold text-white font-mono mt-0.5">55</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+          <div class="text-[11px] text-slate-400">Best Accuracy</div>
+          <div id="stat-best" class="text-lg font-bold text-emerald-400 font-mono mt-0.5">&plusmn;23 m</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+          <div class="text-[11px] text-slate-400">AirTag Payload</div>
+          <div class="text-lg font-bold text-teal-400 font-mono mt-0.5">31 Bytes</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+          <div class="text-[11px] text-slate-400">BLE MAC</div>
+          <div class="text-xs font-bold text-slate-300 font-mono mt-1 truncate">CF:F5:69:75:53:AA</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Col: Bluetooth Finder & Speaker Sound Controller -->
+    <div class="flex flex-col gap-6">
+
+      <!-- HERO PANEL: Sound & Proximity Controller -->
+      <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-500/30 rounded-2xl p-6 shadow-2xl relative overflow-hidden flex flex-col justify-between">
+        
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></span>
+              Proximity Sound Alarm
+            </h2>
+            <span id="ble-badge" class="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-medium">Ready</span>
+          </div>
+
+          <p class="text-xs text-slate-300 leading-relaxed mb-5">
+            Connects to your M5StickS3 via BLE Immediate Alert (Service <code class="text-emerald-400">0x1802</code>) and commands its internal hardware speaker to ring loudly with the authentic Apple AirTag chirp.
+          </p>
+
+          <!-- Status Box / Audio Waves -->
+          <div id="alarm-status-box" class="hidden mb-5 p-4 rounded-xl bg-emerald-950/70 border border-emerald-500/40">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="flex items-end gap-1 h-7">
+                  <div class="w-1.5 bg-emerald-400 rounded-full sound-bar"></div>
+                  <div class="w-1.5 bg-emerald-400 rounded-full sound-bar"></div>
+                  <div class="w-1.5 bg-emerald-400 rounded-full sound-bar"></div>
+                  <div class="w-1.5 bg-emerald-400 rounded-full sound-bar"></div>
+                  <div class="w-1.5 bg-emerald-400 rounded-full sound-bar"></div>
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-emerald-300">StickS3 Speaker Ringing!</div>
+                  <div class="text-[11px] text-emerald-400/80">Chirping 2600Hz / 3200Hz alternating tone</div>
+                </div>
+              </div>
+              <span id="alarm-timer" class="font-mono text-sm font-bold text-emerald-300">Ringing...</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="space-y-3">
+            
+            <!-- Connect Button (if not connected) -->
+            <button id="btn-connect" onclick="connectBluetooth()" class="w-full py-3.5 px-4 rounded-xl font-bold text-sm tracking-wide transition-all shadow-lg flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30 active:scale-[0.98]">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>Connect to StickS3</span>
+            </button>
+
+            <!-- Sound Trigger Buttons (shown once connected or enabled) -->
+            <div id="sound-buttons" class="grid grid-cols-2 gap-3">
+              <button id="btn-play-sound" onclick="triggerSoundAlarm()" class="py-3 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold shadow-emerald-500/20 active:scale-[0.98]">
+                <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+                <span>Play Sound</span>
+              </button>
+
+              <button id="btn-stop-sound" onclick="stopSoundAlarm()" class="py-3 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all shadow flex items-center justify-center gap-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 active:scale-[0.98]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+                <span>Stop Sound</span>
+              </button>
+            </div>
+
+            <!-- Browser Audio Preview Toggle -->
+            <div class="flex items-center justify-between px-3 py-2 bg-slate-800/60 rounded-lg border border-slate-700/60 text-xs">
+              <span class="text-slate-300">Play web sound preview too</span>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="toggle-audio-preview" checked class="sr-only peer">
+                <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+              </label>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Terminal Logs Drawer -->
+        <div class="mt-5 pt-3 border-t border-slate-800/80">
+          <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 font-medium">
+            <span>ACTIVITY LOGS</span>
+            <button onclick="clearLogs()" class="text-slate-500 hover:text-slate-300">Clear</button>
+          </div>
+          <div id="terminal-logs" class="bg-black/40 border border-slate-800/60 rounded-lg p-2.5 font-mono text-[11px] text-slate-400 h-28 overflow-y-auto space-y-1">
+            <div class="text-slate-500">&gt; System initialized. Ready to connect.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Quick Instructions Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl text-xs space-y-3">
+        <h3 class="font-bold text-white text-sm flex items-center gap-2">
+          <span>📱</span> Using on Phone / Bluefy
+        </h3>
+        <ol class="list-decimal list-inside space-y-1.5 text-slate-300 leading-relaxed">
+          <li>Install the free <strong class="text-white">Bluefy</strong> app from the iOS App Store.</li>
+          <li>Open this GitHub Pages URL in Bluefy.</li>
+          <li>Click <strong class="text-emerald-400">Connect to StickS3</strong>.</li>
+          <li>Select <code class="text-teal-300 bg-slate-800 px-1 py-0.5 rounded">StickS3-FindMy</code>.</li>
+          <li>Tap <strong class="text-emerald-400">Play Sound</strong> to make your M5StickS3 ring!</li>
+          <li>Press the front button on StickS3 or tap <strong class="text-rose-400">Stop Sound</strong> to silence.</li>
+        </ol>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Cryptographic Keys Modal -->
+  <div id="keys-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+      <button onclick="closeKeysModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      
+      <div class="flex items-center gap-2 mb-4">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+        </div>
+        <h3 class="font-bold text-white text-base">StickS3 Tag Keys & Details</h3>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-4">
+        This M5StickS3 is programmed with its own unique SECP224R1 cryptographic identity, isolated from other beacons.
+      </p>
+
+      <div class="space-y-3 font-mono text-xs">
+        <div>
+          <label class="text-[11px] text-slate-400 uppercase font-sans font-semibold">Private Key (Base64)</label>
+          <div class="flex gap-2 mt-1">
+            <input readonly value="WUTz8AmIiCKpgsOJjKr6W6+YWnEcCIymolCQzw==" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-emerald-400 text-xs">
+            <button onclick="copyToClipboard('WUTz8AmIiCKpgsOJjKr6W6+YWnEcCIymolCQzw==')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300">Copy</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400 uppercase font-sans font-semibold">Advertisement Key (Base64)</label>
+          <div class="flex gap-2 mt-1">
+            <input readonly value="j/VpdVOqpfmnIoMQ1eZhOS+9WP2SGhUUUd9aUw==" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-blue-400 text-xs">
+            <button onclick="copyToClipboard('j/VpdVOqpfmnIoMQ1eZhOS+9WP2SGhUUUd9aUw==')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300">Copy</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400 uppercase font-sans font-semibold">Hashed Adv Key (SHA256 Base64)</label>
+          <div class="flex gap-2 mt-1">
+            <input readonly value="d2u7Ws16DlqMMDWVxx1fOxJYzjQbIsR4sb4hqm/lxqo=" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-purple-400 text-xs">
+            <button onclick="copyToClipboard('d2u7Ws16DlqMMDWVxx1fOxJYzjQbIsR4sb4hqm/lxqo=')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300">Copy</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400 uppercase font-sans font-semibold">Static BLE MAC Address</label>
+          <div class="flex gap-2 mt-1">
+            <input readonly value="CF:F5:69:75:53:AA" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-slate-200 text-xs">
+            <button onclick="copyToClipboard('CF:F5:69:75:53:AA')" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end">
+        <button onclick="closeKeysModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Reports Modal -->
+  <div id="import-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+      <button onclick="closeImportModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+      
+      <h3 class="font-bold text-white text-base mb-2">Import Apple Find My Reports</h3>
+      <p class="text-xs text-slate-400 mb-4">
+        Paste JSON array of location reports with <code class="text-emerald-400">latitude</code>, <code class="text-emerald-400">longitude</code>, and <code class="text-emerald-400">accuracy</code>:
+      </p>
+
+      <textarea id="import-json" rows="8" placeholder='[{"latitude": 40.4262, "longitude": -86.9265, "accuracy": 25, "timestamp": "2026-09-25 10:00:00"}]' class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 mb-4"></textarea>
+
+      <div class="flex justify-end gap-2">
+        <button onclick="closeImportModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold">Cancel</button>
+        <button onclick="submitImportReports()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold">Import & Recalculate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Application Logic -->
+  <script>
+    // 55 Historical Location Reports for StickS3 Tag (Hillenbrand Hall)
+    let reports = [
+      {"timestamp": "2026-09-24 06:37:40", "accuracy": 46, "latitude": 40.4262091, "longitude": -86.9265913},
+      {"timestamp": "2026-09-24 06:37:30", "accuracy": 46, "latitude": 40.4262091, "longitude": -86.9265913},
+      {"timestamp": "2026-09-24 06:36:50", "accuracy": 27, "latitude": 40.4261142, "longitude": -86.9265446},
+      {"timestamp": "2026-09-24 06:36:40", "accuracy": 46, "latitude": 40.4262091, "longitude": -86.9265913},
+      {"timestamp": "2026-09-24 06:35:00", "accuracy": 72, "latitude": 40.4262457, "longitude": -86.9267169},
+      {"timestamp": "2026-09-24 06:34:30", "accuracy": 54, "latitude": 40.4261768, "longitude": -86.9264456},
+      {"timestamp": "2026-09-24 06:33:40", "accuracy": 36, "latitude": 40.4261539, "longitude": -86.9264349},
+      {"timestamp": "2026-09-24 06:32:00", "accuracy": 25, "latitude": 40.4261054, "longitude": -86.9265445},
+      {"timestamp": "2026-09-24 06:27:40", "accuracy": 49, "latitude": 40.4263923, "longitude": -86.9266388},
+      {"timestamp": "2026-09-24 06:25:40", "accuracy": 88, "latitude": 40.4261561, "longitude": -86.9263083},
+      {"timestamp": "2026-09-24 06:25:40", "accuracy": 87, "latitude": 40.4261589, "longitude": -86.9262648},
+      {"timestamp": "2026-09-24 06:25:30", "accuracy": 86, "latitude": 40.4261581, "longitude": -86.9262147},
+      {"timestamp": "2026-09-24 06:25:30", "accuracy": 98, "latitude": 40.4262100, "longitude": -86.9266480},
+      {"timestamp": "2026-09-24 06:24:40", "accuracy": 26, "latitude": 40.4263247, "longitude": -86.9265153},
+      {"timestamp": "2026-09-24 06:24:40", "accuracy": 49, "latitude": 40.4261995, "longitude": -86.9266017},
+      {"timestamp": "2026-09-24 06:22:40", "accuracy": 25, "latitude": 40.4263260, "longitude": -86.9265149},
+      {"timestamp": "2026-09-24 06:16:00", "accuracy": 50, "latitude": 40.4262030, "longitude": -86.9265278},
+      {"timestamp": "2026-09-24 06:15:30", "accuracy": 31, "latitude": 40.4261470, "longitude": -86.9265203},
+      {"timestamp": "2026-09-24 06:15:30", "accuracy": 47, "latitude": 40.4262102, "longitude": -86.9265949},
+      {"timestamp": "2026-09-24 06:15:20", "accuracy": 98, "latitude": 40.4261824, "longitude": -86.9263555},
+      {"timestamp": "2026-09-24 06:14:30", "accuracy": 47, "latitude": 40.4262102, "longitude": -86.9265949},
+      {"timestamp": "2026-09-24 06:14:00", "accuracy": 38, "latitude": 40.4264254, "longitude": -86.9259171},
+      {"timestamp": "2026-09-24 05:58:20", "accuracy": 98, "latitude": 40.4261810, "longitude": -86.9266682},
+      {"timestamp": "2026-09-24 05:57:30", "accuracy": 43, "latitude": 40.4262098, "longitude": -86.9267180},
+      {"timestamp": "2026-09-24 05:57:20", "accuracy": 98, "latitude": 40.4261810, "longitude": -86.9266682},
+      {"timestamp": "2026-09-24 05:55:30", "accuracy": 53, "latitude": 40.4261984, "longitude": -86.9265397},
+      {"timestamp": "2026-09-24 05:57:30", "accuracy": 47, "latitude": 40.4262107, "longitude": -86.9265958},
+      {"timestamp": "2026-09-24 05:57:20", "accuracy": 85, "latitude": 40.4261482, "longitude": -86.9259573},
+      {"timestamp": "2026-09-24 05:55:30", "accuracy": 98, "latitude": 40.4261918, "longitude": -86.9263806},
+      {"timestamp": "2026-09-24 05:54:30", "accuracy": 43, "latitude": 40.4261441, "longitude": -86.9265240},
+      {"timestamp": "2026-09-24 05:54:00", "accuracy": 57, "latitude": 40.4262519, "longitude": -86.9267224},
+      {"timestamp": "2026-09-24 05:53:20", "accuracy": 46, "latitude": 40.4262109, "longitude": -86.9265962},
+      {"timestamp": "2026-09-24 05:53:20", "accuracy": 98, "latitude": 40.4262005, "longitude": -86.9268020},
+      {"timestamp": "2026-09-24 05:53:20", "accuracy": 46, "latitude": 40.4262109, "longitude": -86.9265962},
+      {"timestamp": "2026-09-24 05:34:10", "accuracy": 45, "latitude": 40.4262233, "longitude": -86.9265356},
+      {"timestamp": "2026-09-24 05:33:30", "accuracy": 71, "latitude": 40.4262518, "longitude": -86.9267076},
+      {"timestamp": "2026-09-24 05:33:30", "accuracy": 23, "latitude": 40.4261334, "longitude": -86.9264167},
+      {"timestamp": "2026-09-24 05:27:30", "accuracy": 73, "latitude": 40.4263083, "longitude": -86.9266133},
+      {"timestamp": "2026-09-24 05:27:20", "accuracy": 31, "latitude": 40.4261336, "longitude": -86.9263923},
+      {"timestamp": "2026-09-24 05:27:20", "accuracy": 29, "latitude": 40.4262880, "longitude": -86.9265152},
+      {"timestamp": "2026-09-24 05:23:40", "accuracy": 55, "latitude": 40.4261800, "longitude": -86.9265486},
+      {"timestamp": "2026-09-24 05:23:20", "accuracy": 29, "latitude": 40.4262884, "longitude": -86.9265132},
+      {"timestamp": "2026-09-24 05:23:00", "accuracy": 59, "latitude": 40.4263083, "longitude": -86.9266133},
+      {"timestamp": "2026-09-24 05:22:10", "accuracy": 49, "latitude": 40.4261805, "longitude": -86.9266218},
+      {"timestamp": "2026-09-24 05:21:20", "accuracy": 42, "latitude": 40.4262270, "longitude": -86.9267237},
+      {"timestamp": "2026-09-24 05:18:10", "accuracy": 28, "latitude": 40.4261260, "longitude": -86.9264611},
+      {"timestamp": "2026-09-24 05:18:00", "accuracy": 25, "latitude": 40.4261693, "longitude": -86.9264955},
+      {"timestamp": "2026-09-24 05:17:30", "accuracy": 67, "latitude": 40.4263083, "longitude": -86.9266133},
+      {"timestamp": "2026-09-24 05:16:10", "accuracy": 33, "latitude": 40.4262270, "longitude": -86.9267237},
+      {"timestamp": "2026-09-24 05:13:10", "accuracy": 44, "latitude": 40.4261879, "longitude": -86.9265499},
+      {"timestamp": "2026-09-24 05:13:10", "accuracy": 28, "latitude": 40.4261189, "longitude": -86.9264124},
+      {"timestamp": "2026-09-24 05:13:10", "accuracy": 47, "latitude": 40.4262109, "longitude": -86.9265925},
+      {"timestamp": "2026-09-24 05:12:10", "accuracy": 47, "latitude": 40.4262109, "longitude": -86.9265925},
+      {"timestamp": "2026-09-24 05:11:20", "accuracy": 48, "latitude": 40.4263083, "longitude": -86.9266133},
+      {"timestamp": "2026-09-24 05:11:10", "accuracy": 31, "latitude": 40.4261027, "longitude": -86.9265169}
+    ];
+
+    let map = null;
+    let markersLayer = null;
+    let centroidMarker = null;
+    let centroidCircle = null;
+
+    // Web Bluetooth Variables
+    let bleDevice = null;
+    let alertChar = null;
+    let isRinging = false;
+    let audioCtx = null;
+    let chirpInterval = null;
+
+    const IAS_SERVICE_UUID = 0x1802;
+    const ALERT_LEVEL_UUID = 0x2A06;
+
+    // -------------------------------------------------------------
+    // LOGGING FUNCTION
+    // -------------------------------------------------------------
+    function addLog(msg, type = 'normal') {
+      const logs = document.getElementById('terminal-logs');
+      const div = document.createElement('div');
+      const now = new Date().toLocaleTimeString();
+      let color = 'text-slate-400';
+      if (type === 'success') color = 'text-emerald-400 font-semibold';
+      if (type === 'warn') color = 'text-amber-400';
+      if (type === 'error') color = 'text-rose-400';
+      if (type === 'info') color = 'text-blue-400';
+      
+      div.className = color;
+      div.textContent = `[${now}] ${msg}`;
+      logs.appendChild(div);
+      logs.scrollTop = logs.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('terminal-logs').innerHTML = '';
+      addLog('Logs cleared.');
+    }
+
+    // -------------------------------------------------------------
+    // MAP & MULTILATERATION INITIALIZATION
+    // -------------------------------------------------------------
+    function calculateCentroid(points) {
+      if (!points || points.length === 0) return null;
+      let totalWeight = 0;
+      let sumLat = 0;
+      let sumLng = 0;
+      let minAcc = 9999;
+
+      points.forEach(p => {
+        const weight = 1 / Math.pow(p.accuracy, 2);
+        sumLat += p.latitude * weight;
+        sumLng += p.longitude * weight;
+        totalWeight += weight;
+        if (p.accuracy < minAcc) minAcc = p.accuracy;
+      });
+
+      const lat = sumLat / totalWeight;
+      const lng = sumLng / totalWeight;
+      // Combined uncertainty estimate
+      const estAcc = Math.max(5.0, Math.sqrt(1 / totalWeight));
+
+      return {
+        lat: lat,
+        lng: lng,
+        accuracy: estAcc,
+        bestSingleAccuracy: minAcc
+      };
+    }
+
+    function initMap() {
+      map = L.map('map', {
+        zoomControl: true,
+        attributionControl: false
+      }).setView([40.42619, -86.92652], 18);
+
+      // CartoDB Dark Matter Base Tiles
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20
+      }).addTo(map);
+
+      markersLayer = L.layerGroup().addTo(map);
+      renderReportsOnMap();
+    }
+
+    function renderReportsOnMap() {
+      markersLayer.clearLayers();
+
+      const centroid = calculateCentroid(reports);
+
+      // Plot individual fix circles and subtle dots
+      reports.forEach((rep, idx) => {
+        // Outer accuracy circle
+        L.circle([rep.latitude, rep.longitude], {
+          radius: rep.accuracy,
+          color: '#38bdf8',
+          weight: 1,
+          opacity: 0.25,
+          fillColor: '#0284c7',
+          fillOpacity: 0.05
+        }).addTo(markersLayer);
+
+        // Center dot
+        const dot = L.circleMarker([rep.latitude, rep.longitude], {
+          radius: 4,
+          color: '#0284c7',
+          weight: 1.5,
+          fillColor: '#38bdf8',
+          fillOpacity: 0.8
+        }).addTo(markersLayer);
+
+        dot.bindPopup(`
+          <div class="text-xs space-y-1">
+            <div class="font-bold text-sky-400">Report #${reports.length - idx}</div>
+            <div class="text-slate-300 font-mono text-[11px]">${rep.timestamp}</div>
+            <div class="text-slate-300">Accuracy: <span class="font-bold text-white">&plusmn;${rep.accuracy}m</span></div>
+            <div class="text-slate-400 font-mono text-[10px]">${rep.latitude.toFixed(6)}, ${rep.longitude.toFixed(6)}</div>
+          </div>
+        `);
+      });
+
+      // Plot the Crowdsourced Centroid
+      if (centroid) {
+        // Pulsing accuracy circle
+        centroidCircle = L.circle([centroid.lat, centroid.lng], {
+          radius: centroid.accuracy,
+          color: '#10b981',
+          weight: 2,
+          opacity: 0.8,
+          fillColor: '#10b981',
+          fillOpacity: 0.2,
+          className: 'animate-pulse-ring'
+        }).addTo(markersLayer);
+
+        // Core Centroid Pin
+        const pinIcon = L.divIcon({
+          className: 'custom-pin',
+          html: `<div class="relative flex items-center justify-center">
+                   <div class="w-8 h-8 rounded-full bg-emerald-500/30 animate-ping absolute"></div>
+                   <div class="w-6 h-6 rounded-full bg-emerald-500 border-2 border-white shadow-xl flex items-center justify-center">
+                     <div class="w-2 h-2 rounded-full bg-slate-950"></div>
+                   </div>
+                 </div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        centroidMarker = L.marker([centroid.lat, centroid.lng], { icon: pinIcon }).addTo(markersLayer);
+        centroidMarker.bindPopup(`
+          <div class="text-xs space-y-1.5 p-1">
+            <div class="font-extrabold text-emerald-400 text-sm flex items-center gap-1.5">
+              <span>📍</span> StickS3 Estimated Location
+            </div>
+            <div class="text-white font-medium">Hillenbrand Hall</div>
+            <div class="text-slate-300 font-mono text-[11px]">Uncertainty: &plusmn;${centroid.accuracy.toFixed(1)} m</div>
+            <div class="text-slate-400 font-mono text-[10px]">${centroid.lat.toFixed(7)}, ${centroid.lng.toFixed(7)}</div>
+            <div class="pt-2">
+              <a href="https://www.google.com/maps?q=${centroid.lat},${centroid.lng}" target="_blank" class="inline-block px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[11px]">Open in Google Maps &nearr;</a>
+            </div>
+          </div>
+        `);
+
+        // Update overlay text
+        document.getElementById('centroid-coords').textContent = `${centroid.lat.toFixed(7)}, ${centroid.lng.toFixed(7)}`;
+        document.getElementById('centroid-accuracy').innerHTML = `&plusmn;${centroid.accuracy.toFixed(1)} m`;
+        document.getElementById('gmaps-link').href = `https://www.google.com/maps?q=${centroid.lat},${centroid.lng}`;
+        document.getElementById('stat-best').innerHTML = `&plusmn;${centroid.bestSingleAccuracy} m`;
+      }
+
+      document.getElementById('report-counter').textContent = `${reports.length} reports`;
+      document.getElementById('stat-total').textContent = reports.length;
+      if (reports.length > 0) {
+        document.getElementById('latest-time').textContent = reports[0].timestamp;
+      }
+    }
+
+    function fitMapBounds() {
+      if (markersLayer) {
+        const bounds = [];
+        reports.forEach(r => bounds.push([r.latitude, r.longitude]));
+        if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+      }
+    }
+
+    function centerOnCentroid() {
+      const centroid = calculateCentroid(reports);
+      if (centroid && map) {
+        map.flyTo([centroid.lat, centroid.lng], 19, { animate: true, duration: 1.2 });
+        if (centroidMarker) centroidMarker.openPopup();
+      }
+    }
+
+    // -------------------------------------------------------------
+    // WEB BLUETOOTH INTEGRATION
+    // -------------------------------------------------------------
+    async function connectBluetooth() {
+      if (!navigator.bluetooth) {
+        alert("Web Bluetooth is not supported in this browser!\n\nIf you are on an iPhone or iPad, please open this link inside the free 'Bluefy' app from the App Store.\nIf you are on a Mac, PC, or Android, use Google Chrome, Brave, or Edge.");
+        addLog("Web Bluetooth API not available on this browser.", "error");
+        return;
+      }
+
+      addLog("Opening Web Bluetooth device picker...", "info");
+      document.getElementById('btn-connect').disabled = true;
+      document.getElementById('btn-connect').innerHTML = `<span class="animate-spin inline-block mr-2">⏳</span> Requesting StickS3...`;
+
+      try {
+        // Request the device with name filter or accept all devices fallback
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [
+            { name: "StickS3-FindMy" },
+            { namePrefix: "StickS3" },
+            { services: [IAS_SERVICE_UUID] }
+          ],
+          optionalServices: [IAS_SERVICE_UUID]
+        });
+
+        addLog(`Selected device: ${bleDevice.name || bleDevice.id}`, "info");
+
+        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+        addLog("Connecting to GATT server...", "info");
+        const server = await bleDevice.gatt.connect();
+
+        addLog("Connected! Discovering Immediate Alert Service (0x1802)...", "info");
+        const service = await server.getPrimaryService(IAS_SERVICE_UUID);
+
+        addLog("Service found! Getting Alert Level Characteristic (0x2A06)...", "info");
+        alertChar = await service.getCharacteristic(ALERT_LEVEL_UUID);
+
+        addLog("StickS3 Connected & Ready to Ring!", "success");
+        updateBluetoothUI(true);
+
+      } catch (err) {
+        console.warn("Standard filter failed, attempting acceptAllDevices fallback:", err);
+        // Fallback for Bluefy or systems with cached UUID filters
+        try {
+          bleDevice = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [IAS_SERVICE_UUID]
+          });
+          addLog(`Connected via fallback: ${bleDevice.name || bleDevice.id}`, "info");
+          bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+          const server = await bleDevice.gatt.connect();
+          const service = await server.getPrimaryService(IAS_SERVICE_UUID);
+          alertChar = await service.getCharacteristic(ALERT_LEVEL_UUID);
+          addLog("StickS3 Connected & Ready to Ring!", "success");
+          updateBluetoothUI(true);
+        } catch (fallbackErr) {
+          addLog(`Bluetooth connection error: ${fallbackErr.message || fallbackErr}`, "error");
+          updateBluetoothUI(false);
+        }
+      } finally {
+        document.getElementById('btn-connect').disabled = false;
+        document.getElementById('btn-connect').innerHTML = `
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          <span>${bleDevice && bleDevice.gatt.connected ? 'Disconnect StickS3' : 'Connect to StickS3'}</span>
+        `;
+      }
+    }
+
+    function onDisconnected() {
+      addLog("Bluetooth device disconnected.", "warn");
+      updateBluetoothUI(false);
+      stopSoundAlarmLocally();
+    }
+
+    function updateBluetoothUI(connected) {
+      const pill = document.getElementById('bt-status-pill');
+      const dot = document.getElementById('bt-status-dot');
+      const text = document.getElementById('bt-status-text');
+      const badge = document.getElementById('ble-badge');
+
+      if (connected) {
+        dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse";
+        text.textContent = "StickS3 Connected";
+        text.className = "text-emerald-400 font-semibold";
+        badge.className = "text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium";
+        badge.textContent = "Connected";
+      } else {
+        dot.className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+        text.textContent = "Bluetooth Disconnected";
+        text.className = "text-slate-300";
+        badge.className = "text-[11px] px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-medium";
+        badge.textContent = "Idle";
+      }
+    }
+
+    // -------------------------------------------------------------
+    // AUDIBLE SPEAKER ALARM TRIGGER & SOUND SYNTHESIS
+    // -------------------------------------------------------------
+    async function triggerSoundAlarm() {
+      let bleSuccess = false;
+
+      // 1. Send BLE command to StickS3 hardware speaker
+      if (alertChar) {
+        try {
+          addLog("Transmitting HIGH ALERT (0x02) to StickS3 speaker...", "info");
+          // 0x02 = High Alert in Immediate Alert Service
+          await alertChar.writeValue(new Uint8Array([0x02]));
+          addLog("StickS3 hardware speaker triggered at MAX VOLUME (255)!", "success");
+          bleSuccess = true;
+        } catch (e) {
+          addLog(`BLE write failed: ${e.message}`, "error");
+        }
+      } else {
+        addLog("StickS3 not connected via Bluetooth yet. Playing local preview.", "warn");
+      }
+
+      // 2. Play Web Audio chirp preview if toggled
+      if (document.getElementById('toggle-audio-preview').checked) {
+        startWebAudioChirp();
+      }
+
+      isRinging = true;
+      document.getElementById('alarm-status-box').classList.remove('hidden');
+      document.getElementById('alarm-timer').textContent = "Active";
+    }
+
+    async function stopSoundAlarm() {
+      // 1. Send BLE stop command
+      if (alertChar) {
+        try {
+          addLog("Transmitting NO ALERT (0x00) to silence speaker...", "info");
+          await alertChar.writeValue(new Uint8Array([0x00]));
+          addLog("StickS3 speaker silenced.", "info");
+        } catch (e) {
+          addLog(`BLE silence failed: ${e.message}`, "error");
+        }
+      }
+
+      stopSoundAlarmLocally();
+    }
+
+    function stopSoundAlarmLocally() {
+      isRinging = false;
+      stopWebAudioChirp();
+      document.getElementById('alarm-status-box').classList.add('hidden');
+    }
+
+    // Web Audio API Synthesizer (Realistic Apple AirTag Chirp)
+    function startWebAudioChirp() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (chirpInterval) clearInterval(chirpInterval);
+
+      // Play repeating sequence: 2600Hz, 3200Hz bursts
+      playChirpTone(2600, 3200);
+      chirpInterval = setInterval(() => {
+        if (!isRinging) {
+          clearInterval(chirpInterval);
+          return;
+        }
+        playChirpTone(2600, 3200);
+      }, 700);
+    }
+
+    function playChirpTone(f1, f2) {
+      if (!audioCtx) return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(f1, now);
+        osc1.frequency.exponentialRampToValueAtTime(f2, now + 0.12);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.3, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+        osc1.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc1.start(now);
+        osc1.stop(now + 0.15);
+
+        // Second tone burst
+        setTimeout(() => {
+          if (!isRinging) return;
+          const now2 = audioCtx.currentTime;
+          const oscB = audioCtx.createOscillator();
+          const gainB = audioCtx.createGain();
+          oscB.type = 'sine';
+          oscB.frequency.setValueAtTime(f2, now2);
+          oscB.frequency.exponentialRampToValueAtTime(f1, now2 + 0.12);
+          gainB.gain.setValueAtTime(0.001, now2);
+          gainB.gain.linearRampToValueAtTime(0.35, now2 + 0.02);
+          gainB.gain.exponentialRampToValueAtTime(0.001, now2 + 0.14);
+          oscB.connect(gainB);
+          gainB.connect(audioCtx.destination);
+          oscB.start(now2);
+          oscB.stop(now2 + 0.15);
+        }, 180);
+
+      } catch (e) {
+        console.error("Audio synth error:", e);
+      }
+    }
+
+    function stopWebAudioChirp() {
+      if (chirpInterval) {
+        clearInterval(chirpInterval);
+        chirpInterval = null;
+      }
+    }
+
+    // -------------------------------------------------------------
+    // MODAL DIALOGS & UTILITIES
+    // -------------------------------------------------------------
+    function openKeysModal() {
+      document.getElementById('keys-modal').classList.remove('hidden');
+      document.getElementById('keys-modal').classList.add('flex');
+    }
+
+    function closeKeysModal() {
+      document.getElementById('keys-modal').classList.add('hidden');
+      document.getElementById('keys-modal').classList.remove('flex');
+    }
+
+    function openImportModal() {
+      document.getElementById('import-modal').classList.remove('hidden');
+      document.getElementById('import-modal').classList.add('flex');
+    }
+
+    function closeImportModal() {
+      document.getElementById('import-modal').classList.add('hidden');
+      document.getElementById('import-modal').classList.remove('flex');
+    }
+
+    function submitImportReports() {
+      const raw = document.getElementById('import-json').value.trim();
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          reports = parsed.concat(reports);
+          renderReportsOnMap();
+          fitMapBounds();
+          closeImportModal();
+          addLog(`Imported ${parsed.length} new reports successfully!`, 'success');
+        } else {
+          alert("Input must be a JSON array of reports.");
+        }
+      } catch (e) {
+        alert("Invalid JSON format: " + e.message);
+      }
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        addLog(`Copied to clipboard: ${text}`, 'info');
+      }).catch(err => {
+        alert("Copied: " + text);
+      });
+    }
+
+    // Run Map Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      addLog("StickS3 Apple FindMy System Loaded. 55 location points mapped.", "success");
+    });
+  </script>
+</body>
+</html>
