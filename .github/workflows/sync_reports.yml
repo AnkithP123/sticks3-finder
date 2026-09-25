@@ -1,0 +1,80 @@
+name: 24/7 Live Apple Find My Sync
+
+on:
+  schedule:
+    # Run automatically every 5 minutes in the cloud
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/sync_reports.yml'
+
+jobs:
+  sync:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Restore Apple Search Party Credentials
+        env:
+          ACCOUNT_JSON: ${{ secrets.ACCOUNT_JSON }}
+        run: |
+          echo "$ACCOUNT_JSON" | base64 --decode > /tmp/account.json
+
+      - name: Query Apple Search Party Network
+        env:
+          PRIV_KEY: ${{ secrets.PRIV_KEY }}
+        run: |
+          uv run --with findmy python3 - << 'EOF'
+          import os, sys, json
+          from findmy import AppleAccount, KeyPair
+
+          store_path = "/tmp/account.json"
+          priv_key = os.environ.get("PRIV_KEY", "WUTz8AmIiCKpgsOJjKr6W6+YWnEcCIymolCQzw==")
+
+          try:
+              key = KeyPair.from_b64(priv_key)
+              acc = AppleAccount.from_json(store_path)
+              reports = acc.fetch_location_history(key)
+              if not reports:
+                  print("No reports returned.")
+                  sys.exit(0)
+
+              sorted_reports = sorted(reports, key=lambda r: r.timestamp, reverse=True)
+              out = []
+              for r in sorted_reports[:20]:
+                  out.append({
+                      "timestamp": str(r.timestamp),
+                      "accuracy": r.horizontal_accuracy,
+                      "latitude": r.latitude,
+                      "longitude": r.longitude,
+                      "confidence": getattr(r, "confidence", 0)
+                  })
+
+              with open("reports.json", "w") as f:
+                  json.dump(out, f, indent=2)
+
+              print(f"Successfully fetched {len(out)} fixes! Latest: {out[0]['timestamp']} ({out[0]['latitude']:.5f}, {out[0]['longitude']:.5f})")
+
+              # Save updated account session if changed
+              acc.to_json(store_path)
+          except Exception as e:
+              print(f"Error fetching from Apple: {e}")
+              sys.exit(1)
+          EOF
+
+      - name: Commit and Push Updated Reports
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add reports.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-sync Apple Find My reports [skip ci]" && git push)
