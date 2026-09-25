@@ -602,16 +602,63 @@
     }
 
     // -------------------------------------------------------------
-    // WEB BLUETOOTH INTEGRATION
     // -------------------------------------------------------------
+    // LOCAL PYTHON BACKEND & WEB BLUETOOTH INTEGRATION
+    // -------------------------------------------------------------
+    let localBridgeActive = false;
+
+    async function checkLocalBridge() {
+      try {
+        const res = await fetch("http://127.0.0.1:8022/api/ble/status", { method: 'GET' });
+        if (res.ok) {
+          localBridgeActive = true;
+          addLog("Native Python backend detected on localhost:8022! Zero-prompt mode available.", "success");
+          const pill = document.getElementById('bt-status-pill');
+          pill.className = "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-950/80 border border-emerald-500/50 text-emerald-300";
+          document.getElementById('bt-status-dot').className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+          document.getElementById('bt-status-text').textContent = "Local Python Bridge Active";
+        }
+      } catch (e) {
+        localBridgeActive = false;
+      }
+    }
+
     async function connectBluetooth() {
+      // If local Python bridge is active, no browser pairing menu needed!
+      if (localBridgeActive) {
+        addLog("Using local Python backend on Mac. Starting background BLE scan (zero prompt)...", "info");
+        await fetch("http://127.0.0.1:8022/api/ble/find", { method: 'POST' });
+        return;
+      }
+
       if (!navigator.bluetooth) {
         alert("Web Bluetooth is not supported in this browser!\n\nIf you are on an iPhone or iPad, please open this link inside the free 'Bluefy' app from the App Store.\nIf you are on a Mac, PC, or Android, use Google Chrome, Brave, or Edge.");
         addLog("Web Bluetooth API not available on this browser.", "error");
         return;
       }
 
-      addLog("Opening Web Bluetooth device picker...", "info");
+      // Check if previously paired device exists in browser cache to avoid the menu!
+      if (navigator.bluetooth.getDevices) {
+        try {
+          const grantedDevices = await navigator.bluetooth.getDevices();
+          const existing = grantedDevices.find(d => d.name === "StickS3-FindMy" || (d.name && d.name.startsWith("StickS3")));
+          if (existing) {
+            addLog(`Found remembered device: ${existing.name || existing.id}. Reconnecting without prompt...`, "info");
+            bleDevice = existing;
+            bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+            const server = await bleDevice.gatt.connect();
+            const service = await server.getPrimaryService(IAS_SERVICE_UUID);
+            alertChar = await service.getCharacteristic(ALERT_LEVEL_UUID);
+            addLog("StickS3 Connected & Ready to Ring (Auto-reconnected)!", "success");
+            updateBluetoothUI(true);
+            return;
+          }
+        } catch (e) {
+          console.log("getDevices error:", e);
+        }
+      }
+
+      addLog("Opening browser Bluetooth selector (browser security requires permission)...", "info");
       document.getElementById('btn-connect').disabled = true;
       document.getElementById('btn-connect').innerHTML = `<span class="animate-spin inline-block mr-2">⏳</span> Requesting StickS3...`;
 
@@ -639,7 +686,7 @@
         addLog("Service found! Getting Alert Level Characteristic (0x2A06)...", "info");
         alertChar = await service.getCharacteristic(ALERT_LEVEL_UUID);
 
-        addLog("StickS3 Connected & Ready to Ring!", "success");
+        addLog("StickS3 Connected & Ready to Ring! (Device remembered for future)", "success");
         updateBluetoothUI(true);
 
       } catch (err) {
@@ -872,6 +919,8 @@
     // Run Map Initialization
     window.addEventListener('DOMContentLoaded', () => {
       initMap();
+      checkLocalBridge();
+      setInterval(checkLocalBridge, 5000);
       addLog("StickS3 Apple FindMy System Loaded. 55 location points mapped.", "success");
     });
   </script>
