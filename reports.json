@@ -1,58 +1,58 @@
 [
   {
-    "timestamp": "2026-09-26 21:11:30+00:00",
+    "timestamp": "2026-09-26 23:06:30+00:00",
+    "accuracy": 88,
+    "latitude": 40.4259778,
+    "longitude": -86.9263861,
+    "confidence": 0
+  },
+  {
+    "timestamp": "2026-09-26 23:06:10+00:00",
+    "accuracy": 66,
+    "latitude": 40.4255415,
+    "longitude": -86.9266143,
+    "confidence": 0
+  },
+  {
+    "timestamp": "2026-09-26 23:02:20+00:00",
+    "accuracy": 52,
+    "latitude": 40.4261014,
+    "longitude": -86.9264718,
+    "confidence": 0
+  },
+  {
+    "timestamp": "2026-09-26 23:02:10+00:00",
+    "accuracy": 52,
+    "latitude": 40.426105,
+    "longitude": -86.9264709,
+    "confidence": 0
+  },
+  {
+    "timestamp": "2026-09-26 22:26:00+00:00",
     "accuracy": 98,
-    "latitude": 40.4262236,
-    "longitude": -86.926587,
+    "latitude": 40.4262156,
+    "longitude": -86.9265089,
     "confidence": 0
   },
   {
-    "timestamp": "2026-09-26 21:01:30+00:00",
-    "accuracy": 172,
-    "latitude": 40.4261927,
-    "longitude": -86.9264307,
+    "timestamp": "2026-09-26 22:16:10+00:00",
+    "accuracy": 92,
+    "latitude": 40.4262059,
+    "longitude": -86.9264836,
     "confidence": 0
   },
   {
-    "timestamp": "2026-09-26 21:01:20+00:00",
-    "accuracy": 142,
-    "latitude": 40.4261927,
-    "longitude": -86.9264307,
+    "timestamp": "2026-09-26 22:13:50+00:00",
+    "accuracy": 58,
+    "latitude": 40.4262082,
+    "longitude": -86.926468,
     "confidence": 0
   },
   {
-    "timestamp": "2026-09-26 21:01:20+00:00",
-    "accuracy": 142,
-    "latitude": 40.4262058,
-    "longitude": -86.9264844,
-    "confidence": 0
-  },
-  {
-    "timestamp": "2026-09-25 18:26:50+00:00",
-    "accuracy": 111,
-    "latitude": 40.4262065,
-    "longitude": -86.9264882,
-    "confidence": 0
-  },
-  {
-    "timestamp": "2026-09-25 18:26:20+00:00",
-    "accuracy": 81,
-    "latitude": 40.4262065,
-    "longitude": -86.9264882,
-    "confidence": 0
-  },
-  {
-    "timestamp": "2026-09-25 18:26:10+00:00",
-    "accuracy": 80,
-    "latitude": 40.4262065,
-    "longitude": -86.9264882,
-    "confidence": 0
-  },
-  {
-    "timestamp": "2026-09-25 18:14:10+00:00",
-    "accuracy": 87,
-    "latitude": 40.4261849,
-    "longitude": -86.9265467,
+    "timestamp": "2026-09-26 22:02:00+00:00",
+    "accuracy": 98,
+    "latitude": 40.4262111,
+    "longitude": -86.9265213,
     "confidence": 0
   }
 ]
