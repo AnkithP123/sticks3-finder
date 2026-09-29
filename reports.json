@@ -8,28 +8,28 @@
   },
   {
     "timestamp": "2026-09-29 03:01:20+00:00",
-    "accuracy": 60,
-    "latitude": 40.4262026,
-    "longitude": -86.9264667,
-    "confidence": 0
-  },
-  {
-    "timestamp": "2026-09-29 03:01:20+00:00",
     "accuracy": 98,
     "latitude": 40.4261366,
     "longitude": -86.9264961,
     "confidence": 0
   },
   {
+    "timestamp": "2026-09-29 03:01:20+00:00",
+    "accuracy": 60,
+    "latitude": 40.4262026,
+    "longitude": -86.9264667,
+    "confidence": 0
+  },
+  {
     "timestamp": "2026-09-29 03:00:20+00:00",
-    "accuracy": 77,
+    "accuracy": 76,
     "latitude": 40.4261957,
     "longitude": -86.9262575,
     "confidence": 0
   },
   {
     "timestamp": "2026-09-29 03:00:20+00:00",
-    "accuracy": 76,
+    "accuracy": 77,
     "latitude": 40.4261957,
     "longitude": -86.9262575,
     "confidence": 0
