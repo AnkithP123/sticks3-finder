@@ -43,16 +43,16 @@
   },
   {
     "timestamp": "2026-10-13 06:14:00+00:00",
-    "accuracy": 50,
-    "latitude": 40.4262304,
-    "longitude": -86.9264883,
+    "accuracy": 47,
+    "latitude": 40.4261894,
+    "longitude": -86.9263479,
     "confidence": 0
   },
   {
     "timestamp": "2026-10-13 06:14:00+00:00",
-    "accuracy": 30,
-    "latitude": 40.4262436,
-    "longitude": -86.9267696,
+    "accuracy": 63,
+    "latitude": 40.4260319,
+    "longitude": -86.9266175,
     "confidence": 0
   }
 ]
