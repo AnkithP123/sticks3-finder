@@ -1,58 +1,58 @@
 [
   {
-    "timestamp": "2026-10-04 04:30:00+00:00",
-    "accuracy": 66,
-    "latitude": 40.4261854,
-    "longitude": -86.9264409,
+    "timestamp": "2026-10-13 06:17:30+00:00",
+    "accuracy": 82,
+    "latitude": 40.4261058,
+    "longitude": -86.9268043,
     "confidence": 0
   },
   {
-    "timestamp": "2026-10-04 04:29:30+00:00",
-    "accuracy": 67,
-    "latitude": 40.4261864,
-    "longitude": -86.9264923,
+    "timestamp": "2026-10-13 06:17:10+00:00",
+    "accuracy": 34,
+    "latitude": 40.4264808,
+    "longitude": -86.9255031,
     "confidence": 0
   },
   {
-    "timestamp": "2026-10-04 04:29:30+00:00",
-    "accuracy": 98,
-    "latitude": 40.4262035,
-    "longitude": -86.9265171,
+    "timestamp": "2026-10-13 06:15:40+00:00",
+    "accuracy": 30,
+    "latitude": 40.4261865,
+    "longitude": -86.9265447,
     "confidence": 0
   },
   {
-    "timestamp": "2026-10-04 04:29:30+00:00",
-    "accuracy": 67,
-    "latitude": 40.4261864,
-    "longitude": -86.9264923,
+    "timestamp": "2026-10-13 06:15:20+00:00",
+    "accuracy": 82,
+    "latitude": 40.4264661,
+    "longitude": -86.9265768,
     "confidence": 0
   },
   {
-    "timestamp": "2026-10-04 04:29:20+00:00",
-    "accuracy": 98,
-    "latitude": 40.4262035,
-    "longitude": -86.9265171,
+    "timestamp": "2026-10-13 06:14:40+00:00",
+    "accuracy": 56,
+    "latitude": 40.4261575,
+    "longitude": -86.9262881,
     "confidence": 0
   },
   {
-    "timestamp": "2026-10-04 04:29:20+00:00",
-    "accuracy": 67,
-    "latitude": 40.4261864,
-    "longitude": -86.9264923,
+    "timestamp": "2026-10-13 06:14:20+00:00",
+    "accuracy": 30,
+    "latitude": 40.4261699,
+    "longitude": -86.9266141,
     "confidence": 0
   },
   {
-    "timestamp": "2026-10-04 04:29:20+00:00",
-    "accuracy": 98,
-    "latitude": 40.4262035,
-    "longitude": -86.9265171,
+    "timestamp": "2026-10-13 06:14:00+00:00",
+    "accuracy": 50,
+    "latitude": 40.4262304,
+    "longitude": -86.9264883,
     "confidence": 0
   },
   {
-    "timestamp": "2026-10-04 04:28:30+00:00",
-    "accuracy": 98,
-    "latitude": 40.4262052,
-    "longitude": -86.9265082,
+    "timestamp": "2026-10-13 06:14:00+00:00",
+    "accuracy": 30,
+    "latitude": 40.4262436,
+    "longitude": -86.9267696,
     "confidence": 0
   }
 ]
